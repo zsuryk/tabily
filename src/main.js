@@ -380,15 +380,6 @@ window.Tabily = window.Tabily || {};
     saveLayout();
   }
 
-  function updatePaneSize(id, width, height) {
-    const p = panes.find((x) => x.id === id);
-    if (!p) return;
-    p.width = Math.max(2, Math.min(GRID_COLS - p.col + 1, width));
-    p.height = Math.max(1, height);
-    renderGrid();
-    saveLayout();
-  }
-
   function moveZIndex(id, dir) {
     const p = panes.find((x) => x.id === id);
     if (!p) return;
@@ -550,6 +541,15 @@ window.Tabily = window.Tabily || {};
   /*  Resize                                                             */
   /* ------------------------------------------------------------------ */
 
+  function updatePaneSize(paneId, width, height) {
+    const p = panes.find((x) => x.id === paneId);
+    if (!p) return;
+    p.width = Math.max(2, Math.min(GRID_COLS - p.col + 1, width));
+    p.height = Math.max(1, height);
+    renderGrid();
+    saveLayout();
+  }
+
   function setupResize(handle, paneId) {
     const onDown = (e) => {
       if (e.button !== 0) return;
@@ -570,6 +570,8 @@ window.Tabily = window.Tabily || {};
         startRow: p.row,
         lastW: p.width,
         lastH: p.height,
+        curW: p.width,
+        curH: p.height,
       };
 
       handle.setPointerCapture(e.pointerId);
@@ -593,13 +595,24 @@ window.Tabily = window.Tabily || {};
       if (nw === resizeState.lastW && nh === resizeState.lastH) return;
       resizeState.lastW = nw;
       resizeState.lastH = nh;
-      updatePaneSize(paneId, nw, nh);
+      resizeState.curW = nw;
+      resizeState.curH = nh;
+
+      const el = document.querySelector(`.pane[data-pane-id="${CSS.escape(paneId)}"]`);
+      if (el) {
+        el.style.gridColumn = `${resizeState.startCol} / span ${nw}`;
+        el.style.gridRow = `${resizeState.startRow} / span ${nh}`;
+      }
     };
 
     const onUp = (_e) => {
       if (!resizeState || resizeState.paneId !== paneId) return;
       handle.classList.remove("resizing");
       gridEl.classList.remove("dragging-active");
+
+      if (resizeState.curW !== resizeState.startWidth || resizeState.curH !== resizeState.startHeight) {
+        updatePaneSize(resizeState.paneId, resizeState.curW, resizeState.curH);
+      }
       resizeState = null;
     };
 
