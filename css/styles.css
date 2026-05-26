@@ -55,7 +55,7 @@ body {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
   grid-auto-rows: var(--row-height);
-  gap: var(--grid-gap);
+  gap: 0;
   padding: var(--grid-padding);
   min-height: 100vh;
   align-content: start;
@@ -82,6 +82,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  margin: var(--grid-gap);
   transition: border-color var(--transition), box-shadow var(--transition), opacity var(--transition), transform var(--transition);
   min-height: 0;
   min-width: 0;

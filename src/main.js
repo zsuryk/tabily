@@ -420,10 +420,9 @@ window.Tabily = window.Tabily || {};
   function getCellFromPoint(clientX, clientY, w, h) {
     const rect = gridEl.getBoundingClientRect();
     const pad = settings.gridPadding;
-    const gap = settings.paneGap;
-    const cellW = (rect.width - 2 * pad - (GRID_COLS - 1) * gap) / GRID_COLS;
-    const stepX = cellW + gap;
-    const stepY = ROW_HEIGHT + gap;
+    const cellW = (rect.width - 2 * pad) / GRID_COLS;
+    const stepX = cellW;
+    const stepY = ROW_HEIGHT;
 
     const relX = clientX - rect.left - pad;
     const relY = clientY - rect.top - pad;
@@ -444,15 +443,15 @@ window.Tabily = window.Tabily || {};
     const rect = gridEl.getBoundingClientRect();
     const pad = settings.gridPadding;
     const gap = settings.paneGap;
-    const cellW = (rect.width - 2 * pad - (GRID_COLS - 1) * gap) / GRID_COLS;
-    const stepX = cellW + gap;
-    const stepY = ROW_HEIGHT + gap;
+    const cellW = (rect.width - 2 * pad) / GRID_COLS;
+    const stepX = cellW;
+    const stepY = ROW_HEIGHT;
 
     return {
-      left: rect.left + pad + (col - 1) * stepX,
-      top: rect.top + pad + (row - 1) * stepY,
-      width: w * cellW + (w - 1) * gap,
-      height: h * ROW_HEIGHT + (h - 1) * gap,
+      left: rect.left + pad + (col - 1) * stepX + gap,
+      top: rect.top + pad + (row - 1) * stepY + gap,
+      width: w * cellW - 2 * gap,
+      height: h * ROW_HEIGHT - 2 * gap,
     };
   }
 
@@ -582,9 +581,9 @@ window.Tabily = window.Tabily || {};
     const onMove = (e) => {
       if (!resizeState || resizeState.paneId !== paneId) return;
       const rect = gridEl.getBoundingClientRect();
-      const cellW = (rect.width - 2 * settings.gridPadding - (GRID_COLS - 1) * settings.paneGap) / GRID_COLS;
-      const stepX = cellW + settings.paneGap;
-      const stepY = ROW_HEIGHT + settings.paneGap;
+      const cellW = (rect.width - 2 * settings.gridPadding) / GRID_COLS;
+      const stepX = cellW;
+      const stepY = ROW_HEIGHT;
 
       const dx = Math.round((e.clientX - resizeState.startX) / stepX);
       const dy = Math.round((e.clientY - resizeState.startY) / stepY);
