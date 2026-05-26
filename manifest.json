@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "tabily",
+  "version": "1.0.0",
+  "description": "A modular new tab dashboard with draggable, resizable panes.",
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "permissions": ["storage", "unlimitedStorage"],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "tabily@example.com",
+      "strict_min_version": "109.0"
+    }
+  }
+}

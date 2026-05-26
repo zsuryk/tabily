@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>tabily</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="dashboard">
+
+    <!-- ===== Grid ===== -->
+    <div id="grid" class="dashboard-grid"></div>
+
+    <!-- ===== Config Toggle (fixed bottom-right) ===== -->
+    <button id="config-toggle" class="config-toggle" aria-label="Configure dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+
+    <!-- ===== Config Overlay ===== -->
+    <div id="config-overlay" class="config-overlay">
+      <div id="config-menu" class="config-menu">
+        <div class="config-header">
+          <h2>Add Pane</h2>
+          <button id="config-close" class="config-close" aria-label="Close">&times;</button>
+        </div>
+
+        <div class="pane-list">
+          <div class="pane-list-item" data-pane-type="markdown" draggable="true">
+            <span class="pane-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+            </span>
+            <span class="pane-name">Markdown Note</span>
+            <span class="click-hint">click or drag</span>
+          </div>
+
+          <div class="pane-list-item" data-pane-type="excalidraw" draggable="true">
+            <span class="pane-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="1"/>
+                <path d="M20.2 20.2l-2.8-2.8"/>
+                <circle cx="6" cy="6" r="3"/>
+                <circle cx="18" cy="6" r="3"/>
+                <circle cx="6" cy="18" r="3"/>
+                <circle cx="18" cy="18" r="3"/>
+              </svg>
+            </span>
+            <span class="pane-name">Excalidraw</span>
+            <span class="click-hint">click or drag</span>
+          </div>
+
+          <div class="pane-list-item" data-pane-type="custom-html" draggable="true">
+            <span class="pane-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="16 18 22 12 16 6"/>
+                <polyline points="8 6 2 12 8 18"/>
+              </svg>
+            </span>
+            <span class="pane-name">Custom HTML</span>
+            <span class="click-hint">click or drag</span>
+          </div>
+        </div>
+
+        <div class="config-settings">
+          <div class="config-settings-header">Spacing</div>
+          <div class="setting-row">
+            <label for="setting-padding">Page Padding</label>
+            <div class="setting-control">
+              <input type="number" id="setting-padding" min="0" max="999" value="16" step="2" />
+              <span class="setting-unit">px</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <label for="setting-gap">Pane Gap</label>
+            <div class="setting-control">
+              <input type="number" id="setting-gap" min="0" max="999" value="12" step="1" />
+              <span class="setting-unit">px</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="config-actions">
+          <button id="export-layout" class="config-btn">Export Layout</button>
+          <button id="import-layout" class="config-btn">Import Layout</button>
+        </div>
+        <input type="file" id="import-input" accept=".json" style="display:none" />
+      </div>
+    </div>
+
+    <!-- ===== Drag Ghost (hidden by default) ===== -->
+    <div id="drag-ghost" class="drag-ghost hidden"></div>
+  </div>
+
+  <script src="src/lib/marked.min.js"></script>
+  <script src="src/browser-polyfill.js"></script>
+  <script src="src/storage.js"></script>
+  <script src="src/panes/markdown.js"></script>
+  <script src="src/panes/excalidraw.js"></script>
+  <script src="src/panes/custom-html.js"></script>
+  <script src="src/main.js"></script>
+</body>
+</html>
