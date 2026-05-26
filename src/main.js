@@ -148,7 +148,7 @@ window.Tabily = window.Tabily || {};
       height: 2,
       data: {
         content:
-          "# Welcome to tabily\n\nYour modular dashboard. Click the **+** button in the bottom-right to add panes.\n\n- Click on this note to edit\n- Click outside to save\n- Drag the header to reposition\n- Drag the bottom-right corner to resize",
+          "# Welcome to tabily\n\nYour modular dashboard. Click the **gear** button in the bottom-right to add panes.\n\n- Click on this note to edit\n- Click outside to save\n- Drag the header to reposition\n- Drag the bottom-right corner to resize",
       },
     });
   }
@@ -195,7 +195,7 @@ window.Tabily = window.Tabily || {};
             <rect x="14" y="14" width="7" height="7"/>
           </svg>
           <h3>Your dashboard is empty</h3>
-          <p>Click the <strong>+</strong> button at the bottom-right to add your first pane.</p>
+          <p>Click the <strong>gear</strong> button at the bottom-right to add your first pane.</p>
         </div>`;
       return;
     }
