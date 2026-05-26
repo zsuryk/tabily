@@ -5,7 +5,8 @@ window.Tabily = window.Tabily || {};
   const SETTINGS_KEY = "settings";
 
   const DEFAULT_SETTINGS = {
-    gridPadding: 16,
+    gridPaddingX: 16,
+    gridPaddingY: 16,
     paneGap: 12,
   };
 

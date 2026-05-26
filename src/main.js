@@ -13,7 +13,7 @@ window.Tabily = window.Tabily || {};
   };
 
   let panes = [];
-  let settings = { gridPadding: 16, paneGap: 12 };
+  let settings = { gridPaddingX: 16, gridPaddingY: 16, paneGap: 12 };
   let gridEl, configToggle, configOverlay, configMenu, dragGhost, dropIndicator, importInput;
   let dragState = null;
   let resizeState = null;
@@ -53,23 +53,34 @@ window.Tabily = window.Tabily || {};
   }
 
   function applySettings() {
-    document.documentElement.style.setProperty("--grid-padding", settings.gridPadding + "px");
+    document.documentElement.style.setProperty("--grid-padding-x", settings.gridPaddingX + "px");
+    document.documentElement.style.setProperty("--grid-padding-y", settings.gridPaddingY + "px");
     document.documentElement.style.setProperty("--grid-gap", settings.paneGap + "px");
   }
 
   function setupSettingsControls() {
-    const paddingInput = document.getElementById("setting-padding");
+    const padXInput = document.getElementById("setting-padding-x");
+    const padYInput = document.getElementById("setting-padding-y");
     const gapInput = document.getElementById("setting-gap");
 
-    if (!paddingInput || !gapInput) return;
+    if (!padXInput || !padYInput || !gapInput) return;
 
-    paddingInput.value = settings.gridPadding;
+    padXInput.value = settings.gridPaddingX;
+    padYInput.value = settings.gridPaddingY;
     gapInput.value = settings.paneGap;
 
-    const onPadding = () => {
-      const v = Math.max(0, parseInt(paddingInput.value, 10) || 0);
-      settings.gridPadding = v;
-      paddingInput.value = v;
+    const onPadX = () => {
+      const v = Math.max(0, parseInt(padXInput.value, 10) || 0);
+      settings.gridPaddingX = v;
+      padXInput.value = v;
+      applySettings();
+      saveSettings();
+    };
+
+    const onPadY = () => {
+      const v = Math.max(0, parseInt(padYInput.value, 10) || 0);
+      settings.gridPaddingY = v;
+      padYInput.value = v;
       applySettings();
       saveSettings();
     };
@@ -82,8 +93,10 @@ window.Tabily = window.Tabily || {};
       saveSettings();
     };
 
-    paddingInput.addEventListener("input", onPadding);
-    paddingInput.addEventListener("change", onPadding);
+    padXInput.addEventListener("input", onPadX);
+    padXInput.addEventListener("change", onPadX);
+    padYInput.addEventListener("input", onPadY);
+    padYInput.addEventListener("change", onPadY);
     gapInput.addEventListener("input", onGap);
     gapInput.addEventListener("change", onGap);
   }
@@ -419,13 +432,14 @@ window.Tabily = window.Tabily || {};
 
   function getCellFromPoint(clientX, clientY, w, h) {
     const rect = gridEl.getBoundingClientRect();
-    const pad = settings.gridPadding;
-    const cellW = (rect.width - 2 * pad) / GRID_COLS;
+    const padX = settings.gridPaddingX;
+    const padY = settings.gridPaddingY;
+    const cellW = (rect.width - 2 * padX) / GRID_COLS;
     const stepX = cellW;
     const stepY = ROW_HEIGHT;
 
-    const relX = clientX - rect.left - pad;
-    const relY = clientY - rect.top - pad;
+    const relX = clientX - rect.left - padX;
+    const relY = clientY - rect.top - padY;
 
     w = w || 1;
     h = h || 1;
@@ -441,15 +455,16 @@ window.Tabily = window.Tabily || {};
 
   function getCellRect(col, row, w, h) {
     const rect = gridEl.getBoundingClientRect();
-    const pad = settings.gridPadding;
+    const padX = settings.gridPaddingX;
+    const padY = settings.gridPaddingY;
     const gap = settings.paneGap;
-    const cellW = (rect.width - 2 * pad) / GRID_COLS;
+    const cellW = (rect.width - 2 * padX) / GRID_COLS;
     const stepX = cellW;
     const stepY = ROW_HEIGHT;
 
     return {
-      left: rect.left + pad + (col - 1) * stepX + gap,
-      top: rect.top + pad + (row - 1) * stepY + gap,
+      left: rect.left + padX + (col - 1) * stepX + gap,
+      top: rect.top + padY + (row - 1) * stepY + gap,
       width: w * cellW - 2 * gap,
       height: h * ROW_HEIGHT - 2 * gap,
     };
@@ -581,7 +596,7 @@ window.Tabily = window.Tabily || {};
     const onMove = (e) => {
       if (!resizeState || resizeState.paneId !== paneId) return;
       const rect = gridEl.getBoundingClientRect();
-      const cellW = (rect.width - 2 * settings.gridPadding) / GRID_COLS;
+      const cellW = (rect.width - 2 * settings.gridPaddingX) / GRID_COLS;
       const stepX = cellW;
       const stepY = ROW_HEIGHT;
 

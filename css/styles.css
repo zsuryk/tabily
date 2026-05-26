@@ -27,7 +27,8 @@
   --font-mono: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --grid-gap: 12px;
-  --grid-padding: 16px;
+  --grid-padding-x: 16px;
+  --grid-padding-y: 16px;
   --row-height: 180px;
 }
 
@@ -56,7 +57,7 @@ body {
   grid-template-columns: repeat(12, 1fr);
   grid-auto-rows: var(--row-height);
   gap: 0;
-  padding: var(--grid-padding);
+  padding: var(--grid-padding-y) var(--grid-padding-x);
   min-height: 100vh;
   align-content: start;
   transition: opacity var(--transition);
