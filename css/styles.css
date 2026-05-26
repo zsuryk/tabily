@@ -439,6 +439,10 @@ body {
   display: none;
 }
 
+.config-overlay.drag-hide {
+  display: none;
+}
+
 /* ===== Config Overlay (centered popup) ===== */
 .config-overlay {
   position: fixed;

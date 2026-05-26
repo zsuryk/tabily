@@ -700,7 +700,6 @@ window.Tabily = window.Tabily || {};
     configOpen = false;
     configOverlay.classList.remove("open");
     configToggle.classList.remove("open");
-    configOverlay.style.pointerEvents = "";
     document.body.style.overflow = "";
   }
 
@@ -718,7 +717,7 @@ window.Tabily = window.Tabily || {};
       /* Drag to add at precise position */
       item.addEventListener("dragstart", (e) => {
         didDrag = true;
-        configOverlay.style.pointerEvents = "none";
+        configOverlay.classList.add("drag-hide");
         e.dataTransfer.setData("text/plain", type);
         e.dataTransfer.effectAllowed = "copy";
 
@@ -732,7 +731,7 @@ window.Tabily = window.Tabily || {};
 
       item.addEventListener("dragend", () => {
         didDrag = false;
-        configOverlay.style.pointerEvents = "";
+        configOverlay.classList.remove("drag-hide");
         hideDropIndicator();
         gridEl.classList.remove("drop-target");
       });
