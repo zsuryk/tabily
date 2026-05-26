@@ -419,10 +419,26 @@ window.Tabily = window.Tabily || {};
   /*  Reposition (drag header)                                           */
   /* ------------------------------------------------------------------ */
 
+  function cleanupStuckState() {
+    if (dragState) {
+      const el = document.querySelector(`.pane[data-pane-id="${dragState.paneId}"]`);
+      if (el) el.classList.remove("dragging");
+      hideDropIndicator();
+      gridEl.classList.remove("dragging-active");
+      dragState = null;
+    }
+    if (resizeState) {
+      document.querySelectorAll(".resize-handle.resizing").forEach((h) => h.classList.remove("resizing"));
+      gridEl.classList.remove("dragging-active");
+      resizeState = null;
+    }
+  }
+
   function setupReposition(header, paneId) {
     const onDown = (e) => {
       if (e.button !== 0) return;
       if (e.target.closest(".pane-controls")) return;
+      cleanupStuckState();
       e.preventDefault();
 
       const p = panes.find((x) => x.id === paneId);
@@ -474,6 +490,7 @@ window.Tabily = window.Tabily || {};
   function setupResize(handle, paneId) {
     const onDown = (e) => {
       if (e.button !== 0) return;
+      cleanupStuckState();
       e.preventDefault();
       e.stopPropagation();
 
@@ -554,6 +571,7 @@ window.Tabily = window.Tabily || {};
     configOpen = false;
     configOverlay.classList.remove("open");
     configToggle.classList.remove("open");
+    configOverlay.style.pointerEvents = "";
     document.body.style.overflow = "";
   }
 
@@ -571,6 +589,7 @@ window.Tabily = window.Tabily || {};
       /* Drag to add at precise position */
       item.addEventListener("dragstart", (e) => {
         didDrag = true;
+        configOverlay.style.pointerEvents = "none";
         e.dataTransfer.setData("text/plain", type);
         e.dataTransfer.effectAllowed = "copy";
 
@@ -584,6 +603,9 @@ window.Tabily = window.Tabily || {};
 
       item.addEventListener("dragend", () => {
         didDrag = false;
+        configOverlay.style.pointerEvents = "";
+        hideDropIndicator();
+        gridEl.classList.remove("drop-target");
       });
 
       /* Click to add at free position – only fires if no drag happened */
@@ -593,6 +615,7 @@ window.Tabily = window.Tabily || {};
           return;
         }
         addPane(type);
+        closeConfig();
       });
     });
 
@@ -637,6 +660,12 @@ window.Tabily = window.Tabily || {};
       const { col, row } = getCellFromPoint(e.clientX, e.clientY, w, h);
       addPane(type, col, row);
       closeConfig();
+    });
+
+    /* Global DnD cleanup — ensures indicator vanishes even if drag ends unexpectedly */
+    document.addEventListener("dragend", () => {
+      hideDropIndicator();
+      gridEl.classList.remove("drop-target");
     });
   }
 
