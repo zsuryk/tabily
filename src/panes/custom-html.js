@@ -37,10 +37,7 @@ window.Tabily = window.Tabily || {};
       let saveTimeout = null;
 
       const renderPreview = () => {
-        const doc = iframe.contentDocument || iframe.contentWindow.document;
-        doc.open();
-        doc.write(pane.data.html || "<html><body></body></html>");
-        doc.close();
+        iframe.srcdoc = pane.data.html || '<html><body></body></html>';
       };
 
       const showEditor = () => {
@@ -64,18 +61,6 @@ window.Tabily = window.Tabily || {};
       } else {
         showPreview();
       }
-
-      // Listen for iframe load to re-render content
-      iframe.addEventListener("load", () => {
-        if (!pane.data.showingEditor) renderPreview();
-      });
-
-      // If iframe already loaded, render now
-      try {
-        if (iframe.contentDocument?.readyState === "complete") {
-          if (!pane.data.showingEditor) renderPreview();
-        }
-      } catch (_) {}
 
       // Expose toggle for pane controls
       container._toggleMode = () => {
