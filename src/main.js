@@ -502,7 +502,20 @@ window.Tabily = window.Tabily || {};
     }
   }
 
+  function getCellAtPoint(clientX, clientY) {
+    const rect = gridEl.getBoundingClientRect();
+    const cellW = (rect.width - 2 * settings.gridPaddingX) / GRID_COLS;
+    const relX = clientX - rect.left - settings.gridPaddingX;
+    const relY = clientY - rect.top - settings.gridPaddingY;
+    return {
+      col: Math.floor(relX / cellW) + 1,
+      row: Math.floor(relY / ROW_HEIGHT) + 1,
+    };
+  }
+
   function setupReposition(header, paneId) {
+    const DRAG_THRESHOLD = 4;
+
     const onDown = (e) => {
       if (e.button !== 0) return;
       if (e.target.closest(".pane-controls")) return;
@@ -512,10 +525,16 @@ window.Tabily = window.Tabily || {};
       const p = panes.find((x) => x.id === paneId);
       if (!p) return;
 
+      const { col: downCol, row: downRow } = getCellAtPoint(e.clientX, e.clientY);
+
       dragState = {
         paneId,
         startCol: p.col,
         startRow: p.row,
+        downCol,
+        downRow,
+        startX: e.clientX,
+        startY: e.clientY,
         width: p.width,
         height: p.height,
         pointerId: e.pointerId,
@@ -528,19 +547,39 @@ window.Tabily = window.Tabily || {};
 
     const onMove = (e) => {
       if (!dragState || dragState.paneId !== paneId) return;
-      const { col, row } = getCellFromPoint(e.clientX, e.clientY, dragState.width, dragState.height);
+      const dx = e.clientX - dragState.startX;
+      const dy = e.clientY - dragState.startY;
+      if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+
+      const cellW = (gridEl.getBoundingClientRect().width - 2 * settings.gridPaddingX) / GRID_COLS;
+      const colDelta = Math.round((e.clientX - dragState.startX) / cellW);
+      const rowDelta = Math.round((e.clientY - dragState.startY) / ROW_HEIGHT);
+
+      let col = Math.max(1, Math.min(GRID_COLS - dragState.width + 1, dragState.startCol + colDelta));
+      let row = Math.max(1, dragState.startRow + rowDelta);
+
       showDropIndicator(col, row, dragState.width, dragState.height);
     };
 
     const onUp = (e) => {
       if (!dragState || dragState.paneId !== paneId) return;
-      const { col, row } = getCellFromPoint(e.clientX, e.clientY, dragState.width, dragState.height);
+      const dx = e.clientX - dragState.startX;
+      const dy = e.clientY - dragState.startY;
       hideDropIndicator();
       header.classList.remove("dragging");
       gridEl.classList.remove("dragging-active");
 
-      if (col !== dragState.startCol || row !== dragState.startRow) {
-        updatePanePosition(paneId, col, row);
+      if (Math.abs(dx) >= DRAG_THRESHOLD || Math.abs(dy) >= DRAG_THRESHOLD) {
+        const cellW = (gridEl.getBoundingClientRect().width - 2 * settings.gridPaddingX) / GRID_COLS;
+        const colDelta = Math.round(dx / cellW);
+        const rowDelta = Math.round(dy / ROW_HEIGHT);
+
+        let col = Math.max(1, Math.min(GRID_COLS - dragState.width + 1, dragState.startCol + colDelta));
+        let row = Math.max(1, dragState.startRow + rowDelta);
+
+        if (col !== dragState.startCol || row !== dragState.startRow) {
+          updatePanePosition(paneId, col, row);
+        }
       }
       dragState = null;
     };
