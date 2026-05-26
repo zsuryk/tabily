@@ -153,13 +153,6 @@ body {
 .pane-controls {
   display: flex;
   gap: 4px;
-  opacity: 0;
-  transition: opacity var(--transition);
-}
-
-.pane:hover .pane-controls,
-.pane-header:focus-within .pane-controls {
-  opacity: 1;
 }
 
 .pane-controls button {
@@ -178,6 +171,17 @@ body {
 .pane-controls button:hover {
   color: var(--danger-hover);
   background: rgba(239, 68, 68, 0.1);
+}
+
+.pane-controls .z-order-btn {
+  font-size: 0.6rem;
+  line-height: 1;
+  padding: 2px 3px;
+}
+
+.pane-controls .z-order-btn:hover {
+  color: var(--accent-hover);
+  background: rgba(99, 102, 241, 0.1);
 }
 
 /* ===== Pane Content ===== */

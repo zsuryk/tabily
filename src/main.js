@@ -152,6 +152,7 @@ window.Tabily = window.Tabily || {};
         ? Math.max(2, Math.min(GRID_COLS, p.width || def.defaultWidth || 4))
         : Math.max(2, Math.min(GRID_COLS, p.width || 4)),
       height: Math.max(1, p.height || (def ? def.defaultHeight || 2 : 2)),
+      zIndex: p.zIndex || 0,
       data: { ...((def && def.defaultData) || {}), ...(p.data || {}) },
     };
   }
@@ -186,6 +187,14 @@ window.Tabily = window.Tabily || {};
       return;
     }
 
+    /* Normalise z-indices so they are always sequential 0,1,2,… */
+    panes
+      .slice()
+      .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))
+      .forEach((p, i) => {
+        p.zIndex = i;
+      });
+
     sorted.forEach((p) => {
       const def = PANE_REGISTRY[p.type];
       if (!def) return;
@@ -195,6 +204,7 @@ window.Tabily = window.Tabily || {};
       paneEl.dataset.paneId = p.id;
       paneEl.style.gridColumn = `${p.col} / span ${p.width}`;
       paneEl.style.gridRow = `${p.row} / span ${p.height}`;
+      paneEl.style.zIndex = p.zIndex;
 
       /* ---- Header ---- */
       const header = document.createElement("div");
@@ -252,6 +262,29 @@ window.Tabily = window.Tabily || {};
         controls.appendChild(toggleBtn);
       }
 
+      /* ---- Z-order buttons ---- */
+      const zUpBtn = document.createElement("button");
+      zUpBtn.className = "z-order-btn";
+      zUpBtn.innerHTML = "&#9650;";
+      zUpBtn.title = "Bring forward";
+      zUpBtn.tabIndex = 0;
+      zUpBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        moveZIndex(p.id, 1);
+      });
+      controls.appendChild(zUpBtn);
+
+      const zDownBtn = document.createElement("button");
+      zDownBtn.className = "z-order-btn";
+      zDownBtn.innerHTML = "&#9660;";
+      zDownBtn.title = "Send backward";
+      zDownBtn.tabIndex = 0;
+      zDownBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        moveZIndex(p.id, -1);
+      });
+      controls.appendChild(zDownBtn);
+
       const rmBtn = document.createElement("button");
       rmBtn.innerHTML = "&#x2715;";
       rmBtn.title = "Remove pane";
@@ -289,7 +322,14 @@ window.Tabily = window.Tabily || {};
     const w = def.defaultWidth || 4;
     const h = def.defaultHeight || 2;
 
-    if (col == null || row == null) {
+    if (col != null && row != null) {
+      const blocked = panes.some((p) => p.col === col && p.row === row && p.width === w && p.height === h);
+      if (blocked) {
+        const free = findFreePosition(w, h);
+        col = free.col;
+        row = free.row;
+      }
+    } else {
       const free = findFreePosition(w, h);
       col = free.col;
       row = free.row;
@@ -297,6 +337,8 @@ window.Tabily = window.Tabily || {};
 
     col = Math.max(1, Math.min(GRID_COLS - w + 1, col));
     row = Math.max(1, row);
+
+    const maxZ = panes.reduce((m, p) => Math.max(m, p.zIndex || 0), -1);
 
     const pane = {
       id: crypto.randomUUID(),
@@ -306,6 +348,7 @@ window.Tabily = window.Tabily || {};
       row,
       width: w,
       height: h,
+      zIndex: maxZ + 1,
       data: { ...(def.defaultData || {}) },
     };
 
@@ -323,6 +366,14 @@ window.Tabily = window.Tabily || {};
   function updatePanePosition(id, col, row) {
     const p = panes.find((x) => x.id === id);
     if (!p) return;
+    const blocked = panes.some(
+      (x) => x.id !== id && x.col === col && x.row === row && x.width === p.width && x.height === p.height
+    );
+    if (blocked) {
+      const free = findFreePosition(p.width, p.height, id);
+      col = free.col;
+      row = free.row;
+    }
     p.col = Math.max(1, Math.min(GRID_COLS - p.width + 1, col));
     p.row = Math.max(1, row);
     renderGrid();
@@ -334,6 +385,18 @@ window.Tabily = window.Tabily || {};
     if (!p) return;
     p.width = Math.max(2, Math.min(GRID_COLS - p.col + 1, width));
     p.height = Math.max(1, height);
+    renderGrid();
+    saveLayout();
+  }
+
+  function moveZIndex(id, dir) {
+    const p = panes.find((x) => x.id === id);
+    if (!p) return;
+    const target = panes.find((x) => x.zIndex === p.zIndex + dir);
+    if (!target) return;
+    const tmp = p.zIndex;
+    p.zIndex = target.zIndex;
+    target.zIndex = tmp;
     renderGrid();
     saveLayout();
   }
