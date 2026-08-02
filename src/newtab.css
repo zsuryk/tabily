@@ -42,9 +42,9 @@ body {
   height: 100%;
   display: flex;
   align-items: stretch;
-  gap: 16px;
-  padding: 18px;
+  justify-content: safe center;
   overflow-x: auto;
+  padding: 18px;
 }
 
 /* ---------- stack column ---------- */
@@ -52,11 +52,106 @@ body {
 .stack {
   flex: 1 1 0;
   min-width: 320px;
+  max-width: 1280px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 4px 0;
+  padding: 4px 10px;
   overflow-y: auto;
+}
+
+/* ---------- gutters (add stack) ---------- */
+
+.gutter {
+  flex: none;
+  width: 34px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.gutter::before {
+  content: "";
+  position: absolute;
+  top: 30px;
+  bottom: 30px;
+  left: 50%;
+  width: 1px;
+  background: repeating-linear-gradient(to bottom, var(--border) 0 5px, transparent 5px 11px);
+}
+
+.gutter-plus {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.gutter-plus svg {
+  width: 14px;
+  height: 14px;
+}
+
+.gutter-plus:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* ---------- stack chrome: grip strip + drop (✕) ---------- */
+
+.stack-strip {
+  flex: none;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-radius: 8px;
+  cursor: grab;
+}
+
+.stack-strip:hover {
+  background: var(--bg-hover);
+}
+
+.stack-strip.dragging {
+  opacity: 0.4;
+}
+
+.stack-strip.drop-above {
+  box-shadow: inset 3px 0 0 0 var(--accent);
+}
+
+.stack-strip.drop-below {
+  box-shadow: inset -3px 0 0 0 var(--accent);
+}
+
+.stack-grip {
+  display: flex;
+  color: var(--fg-muted);
+  opacity: 0;
+  transition: opacity 120ms ease;
+  pointer-events: none;
+}
+
+.stack:hover .stack-grip,
+.stack-strip:hover .stack-grip {
+  opacity: 1;
+}
+
+.stack-grip svg {
+  width: 15px;
+  height: 15px;
 }
 
 /* ---------- collapsed pane bar ---------- */
@@ -155,6 +250,22 @@ body {
 }
 
 .drop-btn:hover {
+  background: rgba(248, 113, 113, 0.14);
+  color: var(--danger);
+}
+
+.stack-drop {
+  position: absolute;
+  right: 0;
+  top: 0;
+  opacity: 0;
+}
+
+.stack:hover .stack-drop {
+  opacity: 1;
+}
+
+.stack-drop:hover {
   background: rgba(248, 113, 113, 0.14);
   color: var(--danger);
 }

@@ -61,6 +61,14 @@ const ICONS = {
   ]),
   close: icon(["M18 6 6 18", "m6 6 12 12"]),
   plus: icon(["M12 5v14", "M5 12h14"]),
+  grip: icon([
+    "M5 9V7c0-.6.4-1 1-1h2c.6 0 1 .4 1 1v2c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1Z",
+    "M5 15v-2c0-.6.4-1 1-1h2c.6 0 1 .4 1 1v2c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1Z",
+    "M12 9V7c0-.6.4-1 1-1h2c.6 0 1 .4 1 1v2c0 .6-.4 1-1 1h-2c-.6 0-1-.4-1-1Z",
+    "M12 15v-2c0-.6.4-1 1-1h2c.6 0 1 .4 1 1v2c0 .6-.4 1-1 1h-2c-.6 0-1-.4-1-1Z",
+    "M19 9V7c0-.6.4-1 1-1h2c.6 0 1 .4 1 1v2c0 .6-.4 1-1 1h-2c-.6 0-1-.4-1-1Z",
+    "M19 15v-2c0-.6.4-1 1-1h2c.6 0 1 .4 1 1v2c0 .6-.4 1-1 1h-2c-.6 0-1-.4-1-1Z",
+  ]),
 };
 
 const dotEl = (pane) => el("span", "dot " + pane.type);
@@ -136,6 +144,18 @@ function toggleExpanded(stackId, paneId) {
 
 function reorderPane(stackId, dragId, targetIdx) {
   commit(() => domain.reorderPane(state, stackId, dragId, targetIdx));
+}
+
+function addStackAt(index) {
+  commit(() => domain.addStackAt(state, index));
+}
+
+function dropStack(stackId) {
+  commit(() => domain.dropStack(state, stackId));
+}
+
+function reorderStack(dragId, targetIdx) {
+  commit(() => domain.reorderStack(state, dragId, targetIdx));
 }
 
 // ---------- welcome card ----------
@@ -280,18 +300,22 @@ let drag = null;
 const canDrop = (drag, stack, pane) =>
   !!drag && drag.kind === "pane" && drag.id !== pane.id && drag.stackId === stack.id;
 
-function dropHalf(node, e) {
+const canDropStack = (drag, stack) => !!drag && drag.kind === "stack" && drag.id !== stack.id;
+
+function dropHalf(node, e, axis) {
   const rect = node.getBoundingClientRect();
-  return e.clientY - rect.top >= rect.height / 2;
+  const pos = axis === "x" ? e.clientX - rect.left : e.clientY - rect.top;
+  const size = axis === "x" ? rect.width : rect.height;
+  return pos >= size / 2;
 }
 
-function setDropIndicator(node, e) {
-  node.classList.toggle("drop-above", !dropHalf(node, e));
-  node.classList.toggle("drop-below", dropHalf(node, e));
+function setDropIndicator(node, e, axis) {
+  node.classList.toggle("drop-above", !dropHalf(node, e, axis));
+  node.classList.toggle("drop-below", dropHalf(node, e, axis));
 }
 
-function dropTargetIndex(node, e) {
-  return (dropHalf(node, e) ? 1 : 0) + Number(node.dataset.index);
+function dropTargetIndex(node, e, axis) {
+  return (dropHalf(node, e, axis) ? 1 : 0) + Number(node.dataset.index);
 }
 
 function clearDropIndicators() {
@@ -316,19 +340,79 @@ function wirePaneDrag(node, stack, pane) {
   node.addEventListener("dragover", (e) => {
     if (!canDrop(drag, stack, pane)) return;
     e.preventDefault();
-    setDropIndicator(node, e);
+    setDropIndicator(node, e, "y");
   });
   node.addEventListener("dragleave", () => node.classList.remove("drop-above", "drop-below"));
   node.addEventListener("drop", (e) => {
     e.preventDefault();
     node.classList.remove("drop-above", "drop-below");
     if (!canDrop(drag, stack, pane)) return;
-    reorderPane(stack.id, drag.id, dropTargetIndex(node, e));
+    reorderPane(stack.id, drag.id, dropTargetIndex(node, e, "y"));
+    drag = null;
+  });
+}
+
+function wireStackDrag(node, stack) {
+  node.addEventListener("dragstart", (e) => {
+    drag = { kind: "stack", id: stack.id };
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", stack.id);
+    node.classList.add("dragging");
+  });
+  node.addEventListener("dragend", () => {
+    drag = null;
+    clearDropIndicators();
+    node.classList.remove("dragging");
+  });
+  node.addEventListener("dragover", (e) => {
+    if (!canDropStack(drag, stack)) return;
+    e.preventDefault();
+    setDropIndicator(node, e, "x");
+  });
+  node.addEventListener("dragleave", () => node.classList.remove("drop-above", "drop-below"));
+  node.addEventListener("drop", (e) => {
+    e.preventDefault();
+    node.classList.remove("drop-above", "drop-below");
+    if (!canDropStack(drag, stack)) return;
+    reorderStack(drag.id, dropTargetIndex(node, e, "x"));
     drag = null;
   });
 }
 
 // ---------- stack column ----------
+
+function stackDropBtn(stack) {
+  const b = el("button", "icon-btn stack-drop");
+  b.title = "Drop stack";
+  b.setAttribute("aria-label", "Drop stack");
+  b.appendChild(ICONS.close.cloneNode(true));
+  b.addEventListener("click", (e) => {
+    e.stopPropagation();
+    dropStack(stack.id);
+  });
+  return b;
+}
+
+function stackChrome(stack) {
+  const strip = el("div", "stack-strip");
+  strip.draggable = true;
+  const grip = el("span", "stack-grip");
+  grip.appendChild(ICONS.grip.cloneNode(true));
+  strip.append(grip, stackDropBtn(stack));
+  wireStackDrag(strip, stack);
+  return strip;
+}
+
+function gutterEl(index) {
+  const g = el("div", "gutter");
+  const b = el("button", "gutter-plus");
+  b.title = "Add stack";
+  b.setAttribute("aria-label", "Add stack here");
+  b.appendChild(ICONS.plus.cloneNode(true));
+  b.addEventListener("click", () => addStackAt(index));
+  g.appendChild(b);
+  return g;
+}
 
 function ghostEl(stack) {
   const g = el("button", "ghost");
@@ -354,15 +438,18 @@ function stackAddBtn(stack) {
   return b;
 }
 
-function stackEl(stack) {
+function stackEl(stack, i) {
   const s = el("div", "stack");
   s.dataset.stackId = stack.id;
+  const chrome = stackChrome(stack);
+  chrome.dataset.index = i;
+  s.appendChild(chrome);
   if (!stack.panes.length) {
     s.appendChild(ghostEl(stack));
   } else {
-    stack.panes.forEach((pane, i) => {
+    stack.panes.forEach((pane, j) => {
       const node = pane.id === stack.expandedId ? expandedPaneEl(stack, pane) : barEl(stack, pane);
-      node.dataset.index = i;
+      node.dataset.index = j;
       s.appendChild(node);
     });
   }
@@ -378,7 +465,11 @@ function render() {
     app.appendChild(welcomeEl());
     return;
   }
-  for (const stack of state.stacks) app.appendChild(stackEl(stack));
+  state.stacks.forEach((stack, i) => {
+    app.appendChild(gutterEl(i));
+    app.appendChild(stackEl(stack, i));
+  });
+  app.appendChild(gutterEl(state.stacks.length));
 }
 
 function syncTitles(stackId, paneId) {
