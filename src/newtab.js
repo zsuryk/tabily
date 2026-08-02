@@ -2,6 +2,7 @@
 // Structural changes (add/drop/reorder/expand) re-render the page; typing
 // paths update titles in place so input focus is never lost. Persistence
 // goes through the storage adapter, debounced for typing.
+import "@fontsource-variable/inter";
 import * as domain from "./stack/domain.js";
 import { loadState, saveState } from "./stack/storage.js";
 import "./lib/marked.min.js";
@@ -82,7 +83,11 @@ const ICONS = {
   ]),
 };
 
-const dotEl = (pane) => el("span", "dot " + pane.type);
+const typeIconEl = (pane) => {
+  const chip = el("span", "type-icon " + pane.type);
+  chip.appendChild(ICONS[pane.type].cloneNode(true));
+  return chip;
+};
 
 function logo() {
   const wrap = el("div", "logo");
@@ -145,12 +150,55 @@ function scheduleSceneSave() {
 
 window.addEventListener("pagehide", save);
 
+// FLIP the accordion: the pane grows from the bar it replaces (and shrinks
+// back into it). Runs on the compositor, so expand/collapse stays smooth.
+function flipInto(node, fromRect) {
+  if (!node || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (!fromRect) {
+    node.animate(
+      [{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }],
+      { duration: 200, easing: "cubic-bezier(0.2, 0.7, 0.2, 1)" }
+    );
+    return;
+  }
+  const toRect = node.getBoundingClientRect();
+  const scaleY = toRect.height ? fromRect.height / toRect.height : 1;
+  node.animate(
+    [
+      {
+        opacity: 0.35,
+        transform: `translateY(${fromRect.top - toRect.top}px) scaleY(${scaleY})`,
+        transformOrigin: "top center",
+      },
+      { opacity: 1, transform: "none", transformOrigin: "top center" },
+    ],
+    { duration: 240, easing: "cubic-bezier(0.2, 0.7, 0.2, 1)" }
+  );
+}
+
+// Animate the pane that just became a stack's expanded pane in. stackId is
+// null only when the page had zero stacks, in which case the pane is unique.
+function flipNewPane(stackId, fromRect) {
+  const to = stackId
+    ? document.querySelector(`[data-stack-id="${stackId}"] .pane`)
+    : document.querySelector(".pane");
+  if (to) flipInto(to, fromRect);
+}
+
 function quickAdd(type) {
+  const targetId = state.stacks.length ? state.stacks[state.stacks.length - 1].id : null;
   commit(() => domain.quickAdd(state, type));
+  flipNewPane(targetId, null);
 }
 
 function addPane(stackId, type) {
+  const stack = state.stacks.find((s) => s.id === stackId);
+  if (!stack) return;
+  const rect = stack.panes.length
+    ? null
+    : document.querySelector(`[data-stack-id="${stackId}"] .ghost`)?.getBoundingClientRect();
   commit(() => domain.addPane(state, stackId, type));
+  flipNewPane(stackId, rect);
 }
 
 function dropPane(stackId, paneId) {
@@ -158,7 +206,23 @@ function dropPane(stackId, paneId) {
 }
 
 function toggleExpanded(stackId, paneId) {
+  const stack = state.stacks.find((s) => s.id === stackId);
+  const pane = stack && stack.panes.find((p) => p.id === paneId);
+  if (!stack || !pane) return;
+  const expanding = pane.id !== stack.expandedId;
+  const from = document.querySelector(
+    `[data-stack-id="${stackId}"] ${expanding ? `.bar[data-pane-id="${paneId}"]` : ".pane"}`
+  );
+  const fromRect = from ? from.getBoundingClientRect() : null;
   commit(() => domain.setExpanded(state, stackId, paneId));
+  if (expanding) {
+    flipNewPane(stackId, fromRect);
+  } else {
+    flipInto(
+      document.querySelector(`[data-stack-id="${stackId}"] .bar[data-pane-id="${paneId}"]`),
+      fromRect
+    );
+  }
 }
 
 function reorderPane(stackId, dragId, targetIdx) {
@@ -315,14 +379,18 @@ function currentTheme() {
 
 function canvasEl(stack, pane) {
   const frame = el("div", "canvas-frame");
+  const placeholder = el("div", "canvas-placeholder");
+  const phIcon = typeIconEl({ type: "excalidraw" });
+  phIcon.classList.add("canvas-placeholder-icon");
+  placeholder.append(phIcon, el("span", "canvas-placeholder-text", "Loading canvas…"));
   const iframe = document.createElement("iframe");
   iframe.className = "excalidraw-iframe";
   iframe.src = excalidrawSrc(currentTheme());
   iframe.allow = "clipboard-read; clipboard-write";
   iframe.sandbox = "allow-scripts allow-same-origin allow-popups allow-forms";
   iframe.loading = "lazy";
-  frame.appendChild(iframe);
-  canvasRegistry.set(iframe.contentWindow, { paneId: pane.id, iframe });
+  frame.append(placeholder, iframe);
+  canvasRegistry.set(iframe.contentWindow, { paneId: pane.id, iframe, placeholder });
   return { node: frame };
 }
 
@@ -332,6 +400,7 @@ window.addEventListener("message", (e) => {
   const msg = e.data;
   if (!msg || typeof msg !== "object") return;
   if (msg.type === "excalidraw-ready") {
+    entry.placeholder.hidden = true;
     const scene = scenes[entry.paneId];
     if (scene) e.source.postMessage({ type: "loadScene", sceneData: scene }, "*");
     return;
@@ -344,7 +413,10 @@ window.addEventListener("message", (e) => {
 
 window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
   const src = excalidrawSrc(currentTheme());
-  for (const { iframe } of canvasRegistry.values()) iframe.src = src;
+  for (const { iframe, placeholder } of canvasRegistry.values()) {
+    placeholder.hidden = false;
+    iframe.src = src;
+  }
 });
 
 function bodyEl(stack, pane) {
@@ -358,7 +430,7 @@ function barEl(stack, pane) {
   bar.dataset.paneId = pane.id;
   const t = el("span", "bar-title", domain.titleOf(stack, pane));
   t.dataset.title = "";
-  bar.append(dotEl(pane), t, dropBtn(stack, pane));
+  bar.append(typeIconEl(pane), t, dropBtn(stack, pane));
   bar.addEventListener("click", () => {
     if (Date.now() < suppressClickUntil) return;
     toggleExpanded(stack.id, pane.id);
@@ -372,7 +444,7 @@ function expandedPaneEl(stack, pane) {
   const head = el("div", "pane-head");
   head.dataset.paneId = pane.id;
   const { node, headExtra } = bodyEl(stack, pane);
-  head.append(dotEl(pane), titleInput(stack, pane), el("span", "type-chip", TYPES[pane.type]));
+  head.append(typeIconEl(pane), titleInput(stack, pane));
   if (headExtra) head.appendChild(headExtra);
   head.appendChild(dropBtn(stack, pane));
   head.addEventListener("click", (e) => {
@@ -509,8 +581,11 @@ function gutterEl(index) {
 function ghostEl(stack) {
   const g = el("button", "ghost");
   g.title = "Add pane";
-  g.appendChild(el("span", "ghost-plus", "+"));
-  g.appendChild(el("span", "ghost-hint", "add pane"));
+  const circle = el("span", "ghost-plus");
+  circle.appendChild(ICONS.plus.cloneNode(true));
+  g.appendChild(circle);
+  g.appendChild(el("span", "ghost-hint", "Add a pane"));
+  g.appendChild(el("span", "ghost-sub", "Notes and canvases start here"));
   g.addEventListener("click", (e) => {
     e.stopPropagation();
     openChooserAt(g.getBoundingClientRect(), stack.id);
