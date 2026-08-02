@@ -6,7 +6,15 @@
 
 **Status:** ready-for-agent
 
-- [ ] The page follows the system color scheme; dark is the fallback when no preference is available
-- [ ] All surfaces and interactive elements use the token system; the indigo/violet accent is consistent throughout
-- [ ] The stacked-panes logo renders in the welcome card
-- [ ] Manifest icons (PNG raster) display correctly in both browsers' extension UI
+- [x] The page follows the system color scheme; dark is the fallback when no preference is available
+- [x] All surfaces and interactive elements use the token system; the indigo/violet accent is consistent throughout
+- [x] The stacked-panes logo renders in the welcome card
+- [x] Manifest icons (PNG raster) display correctly in both browsers' extension UI
+
+## Comments
+
+- Completed 2026-08-02. `src/newtab.css` became a token system: `:root` holds the dark tokens as the base (the fallback — no `prefers-color-scheme` match still renders dark, and `currentTheme()` in `newtab.js` already defaults to dark for the Excalidraw iframe), with a `@media (prefers-color-scheme: light)` block overriding every token (incl. `color-scheme` for scrollbars/form controls). All surfaces read tokens: bg/elev/hover/inset, border, fg/muted, accent/accent-2, grad, soft tints, shadows, glows. Every hardcoded literal that remained from ticket 04/05 is now a token: the body radial glow (`--glow`), the logo's drop-shadow (`--logo-glow`), the primary button's shadow (`--btn-shadow`) and its `#fff` text (`--on-accent`), and both danger hovers (`--danger-soft`). `rg`-checked: no color literal survives outside the two token blocks.
+- Focus states wire the accent in: a shared `:focus-visible` ring (`outline: 2px solid var(--accent); outline-offset: 2px`) covers every interactive element — gutter `+`, icon buttons, per-stack `+`, chooser options, welcome buttons, ghost columns. Inputs keep their in-component focus treatments (`--accent` ring on title input, `--accent-soft` halo on the textarea).
+- Brand: the stacked-panes SVG logo was already rendered in the welcome card by ticket 05 (`logo()` in `newtab.js`, indigo→violet gradient, matching the new raster icons) — verified, no change needed. Manifest icons shipped as PNG rasters per settled decision 12: `scripts/gen-icons.mjs` rasterizes the same 64-space logo geometry (three rounded rects, opacities 0.55/0.8/1, `#818cf8`→`#a78bfa`) with a hand-rolled PNG encoder (zlib + CRC32, rounded-rect SDF antialiasing) into `icons/icon-{16,32,48,128}.png` — no image dependencies; `npm run icons` regenerates them. `manifest.json` gained `"icons"`, and the build's `assemble-dist` plugin copies `icons/` into `dist/` alongside the manifest.
+- Light theme values are tuned for contrast (indigo-600/violet-600 accents, muted grays ≥ ~5:1 on the `#f5f6fb` surface); dark values are the ticket-05 palette unchanged. The Excalidraw iframe already flips on the same matchMedia source (ticket 05), so page and canvas now always agree on the system scheme.
+- Not tested by design (spec Testing Decisions: theming and the manifest are on the not-tested list — validated by manual dual-browser QA, ticket 09). `npm test` (53) and `vite build` are green; dist ships `icons/` + manifest with icon paths intact.

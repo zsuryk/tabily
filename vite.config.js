@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 
@@ -26,6 +26,7 @@ export default defineConfig({
         writeFileSync("dist/newtab.html", html.replaceAll("../assets/", "./assets/"));
         rmSync("dist/src", { recursive: true, force: true });
         copyFileSync("manifest.json", "dist/manifest.json");
+        cpSync("icons", "dist/icons", { recursive: true });
       },
     },
   ],
