@@ -18,7 +18,7 @@ export default defineConfig({
   },
   plugins: [
     {
-      name: "copy-manifest",
+      name: "assemble-dist",
       apply: "build",
       closeBundle() {
         mkdirSync("dist", { recursive: true });
