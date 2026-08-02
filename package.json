@@ -1,0 +1,12 @@
+{
+  "name": "stackytab",
+  "private": true,
+  "description": "A browser extension that replaces the new tab page with stacks of editable panes.",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  }
+}

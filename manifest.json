@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "tabily",
+  "name": "stackytab",
   "version": "0.1.0.1",
-  "description": "A modular new tab dashboard with draggable, resizable panes.",
+  "description": "A new tab page of editable pane stacks — Markdown notes and Excalidraw canvases.",
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },
