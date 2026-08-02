@@ -4,6 +4,9 @@
 // goes through the storage adapter, debounced for typing.
 import * as domain from "./stack/domain.js";
 import { loadState, saveState } from "./stack/storage.js";
+import "./lib/marked.min.js";
+
+const marked = globalThis.marked;
 
 const TYPES = { markdown: "Markdown", excalidraw: "Excalidraw" };
 
@@ -13,8 +16,11 @@ chooser.hidden = true;
 document.body.appendChild(chooser);
 
 let state = domain.createState();
+const scenes = {}; // paneId -> excalidraw scene message
+const canvasRegistry = new Map(); // iframe contentWindow -> { paneId, iframe }
 let chooserStackId = null;
 let saveTimer = null;
+let sceneSaveTimer = null;
 let suppressClickUntil = 0;
 
 // ---------- element helpers ----------
@@ -61,6 +67,11 @@ const ICONS = {
   ]),
   close: icon(["M18 6 6 18", "m6 6 12 12"]),
   plus: icon(["M12 5v14", "M5 12h14"]),
+  eye: icon([
+    "M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z",
+    "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z",
+  ]),
+  pencil: icon(["M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"]),
   grip: icon([
     "M5 9V7c0-.6.4-1 1-1h2c.6 0 1 .4 1 1v2c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1Z",
     "M5 15v-2c0-.6.4-1 1-1h2c.6 0 1 .4 1 1v2c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1Z",
@@ -118,13 +129,21 @@ function commit(fn) {
 
 function save() {
   clearTimeout(saveTimer);
-  saveState(state).catch((err) => console.error("stackytab: save failed", err));
+  clearTimeout(sceneSaveTimer);
+  saveState(state, scenes).catch((err) => console.error("stackytab: save failed", err));
 }
 
 function scheduleSave() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(save, 300);
 }
+
+function scheduleSceneSave() {
+  clearTimeout(sceneSaveTimer);
+  sceneSaveTimer = setTimeout(save, 800);
+}
+
+window.addEventListener("pagehide", save);
 
 function quickAdd(type) {
   commit(() => domain.quickAdd(state, type));
@@ -246,12 +265,20 @@ function titleInput(stack, pane) {
   return input;
 }
 
-function bodyEl(stack, pane) {
-  if (pane.type === "excalidraw") {
-    const stub = el("div", "canvas-stub");
-    stub.appendChild(el("span", null, "Excalidraw canvas — placeholder"));
-    return stub;
+const escapeHtml = (s) =>
+  s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function renderMarkdown(text) {
+  try {
+    return marked.parse(text || "");
+  } catch (err) {
+    console.error("stackytab: markdown render failed", err);
+    return "<pre>" + escapeHtml(text || "") + "</pre>";
   }
+}
+
+function markdownBodyEl(stack, pane) {
+  const wrap = el("div", "md-wrap");
   const ta = el("textarea", "pane-textarea");
   ta.placeholder = "Write… the first line becomes the pane title.";
   ta.value = pane.content;
@@ -260,7 +287,69 @@ function bodyEl(stack, pane) {
     syncTitles(stack.id, pane.id);
     scheduleSave();
   });
-  return ta;
+  const preview = el("div", "pane-preview");
+  const toggle = el("button", "icon-btn view-toggle");
+  const setView = (on) => {
+    wrap.classList.toggle("preview", on);
+    toggle.replaceChildren(on ? ICONS.pencil.cloneNode(true) : ICONS.eye.cloneNode(true));
+    toggle.title = on ? "Edit note" : "Preview note";
+    toggle.setAttribute("aria-label", toggle.title);
+    if (on) {
+      preview.innerHTML = renderMarkdown(pane.content);
+    } else {
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = ta.value.length;
+    }
+  };
+  toggle.addEventListener("click", () => setView(!wrap.classList.contains("preview")));
+  preview.addEventListener("click", () => setView(false));
+  wrap.append(ta, preview);
+  return { node: wrap, headExtra: toggle };
+}
+
+const excalidrawSrc = (theme) => `https://excalidraw.com/?theme=${theme}&embed&iframe`;
+
+function currentTheme() {
+  return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+}
+
+function canvasEl(stack, pane) {
+  const frame = el("div", "canvas-frame");
+  const iframe = document.createElement("iframe");
+  iframe.className = "excalidraw-iframe";
+  iframe.src = excalidrawSrc(currentTheme());
+  iframe.allow = "clipboard-read; clipboard-write";
+  iframe.sandbox = "allow-scripts allow-same-origin allow-popups allow-forms";
+  iframe.loading = "lazy";
+  frame.appendChild(iframe);
+  canvasRegistry.set(iframe.contentWindow, { paneId: pane.id, iframe });
+  return { node: frame };
+}
+
+window.addEventListener("message", (e) => {
+  const entry = canvasRegistry.get(e.source);
+  if (!entry) return;
+  const msg = e.data;
+  if (!msg || typeof msg !== "object") return;
+  if (msg.type === "excalidraw-ready") {
+    const scene = scenes[entry.paneId];
+    if (scene) e.source.postMessage({ type: "loadScene", sceneData: scene }, "*");
+    return;
+  }
+  if (msg.elements && msg.appState) {
+    scenes[entry.paneId] = { elements: msg.elements, appState: msg.appState };
+    scheduleSceneSave();
+  }
+});
+
+window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
+  const src = excalidrawSrc(currentTheme());
+  for (const { iframe } of canvasRegistry.values()) iframe.src = src;
+});
+
+function bodyEl(stack, pane) {
+  if (pane.type === "excalidraw") return canvasEl(stack, pane);
+  return markdownBodyEl(stack, pane);
 }
 
 function barEl(stack, pane) {
@@ -282,13 +371,16 @@ function expandedPaneEl(stack, pane) {
   const wrap = el("div", "pane");
   const head = el("div", "pane-head");
   head.dataset.paneId = pane.id;
-  head.append(dotEl(pane), titleInput(stack, pane), el("span", "type-chip", TYPES[pane.type]), dropBtn(stack, pane));
+  const { node, headExtra } = bodyEl(stack, pane);
+  head.append(dotEl(pane), titleInput(stack, pane), el("span", "type-chip", TYPES[pane.type]));
+  if (headExtra) head.appendChild(headExtra);
+  head.appendChild(dropBtn(stack, pane));
   head.addEventListener("click", (e) => {
     if (e.target.closest("input, button")) return;
     toggleExpanded(stack.id, pane.id);
   });
   const body = el("div", "pane-body");
-  body.appendChild(bodyEl(stack, pane));
+  body.appendChild(node);
   wrap.append(head, body);
   return wrap;
 }
@@ -460,6 +552,10 @@ function stackEl(stack, i) {
 // ---------- render ----------
 
 function render() {
+  canvasRegistry.clear();
+  const live = new Set();
+  for (const s of state.stacks) for (const p of s.panes) live.add(p.id);
+  for (const id of Object.keys(scenes)) if (!live.has(id)) delete scenes[id];
   app.textContent = "";
   if (!state.stacks.length) {
     app.appendChild(welcomeEl());
@@ -492,8 +588,9 @@ function syncTitles(stackId, paneId) {
 // ---------- boot ----------
 
 loadState()
-  .then((loaded) => {
+  .then(({ state: loaded, scenes: loadedScenes }) => {
     state = loaded;
+    Object.assign(scenes, loadedScenes);
     render();
   })
   .catch((err) => {
