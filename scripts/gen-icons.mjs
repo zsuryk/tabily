@@ -18,8 +18,11 @@ const RECTS = [
 ];
 const H = 14; // rect height (64-space)
 const RX = 7; // corner radius (64-space)
-const C = 32; // rect center x (64-space)
-const GRAD = [0x81, 0x8c, 0xf8, 0xa7, 0xbb, 0xfa]; // #818cf8 -> #a78bfa
+const CENTER_X = 32; // rect center x (64-space)
+const GRAD_STOPS = [
+  { r: 0x81, g: 0x8c, b: 0xf8 }, // #818cf8
+  { r: 0xa7, g: 0xbb, b: 0xfa }, // #a78bfa
+];
 
 function distRoundRect(px, py, cx, cy, hw, hh, r) {
   const qx = Math.abs(px - cx) - (hw - r);
@@ -40,13 +43,15 @@ function render(size) {
         b = 0,
         a = 0;
       for (const rc of RECTS) {
-        const d = distRoundRect(px, py, C, rc.y + H / 2, rc.w / 2, H / 2, RX);
+        const d = distRoundRect(px, py, CENTER_X, rc.y + H / 2, rc.w / 2, H / 2, RX);
         const cov = Math.max(0, Math.min(1, 0.5 - d));
         const alpha = rc.opacity * cov;
         if (alpha <= 0) continue;
-        const cr = GRAD[0] + (GRAD[3] - GRAD[0]) * t;
-        const cg = GRAD[1] + (GRAD[4] - GRAD[1]) * t;
-        const cb = GRAD[2] + (GRAD[5] - GRAD[2]) * t;
+        const from = GRAD_STOPS[0];
+        const to = GRAD_STOPS[1];
+        const cr = from.r + (to.r - from.r) * t;
+        const cg = from.g + (to.g - from.g) * t;
+        const cb = from.b + (to.b - from.b) * t;
         r = cr * alpha + r * (1 - alpha);
         g = cg * alpha + g * (1 - alpha);
         b = cb * alpha + b * (1 - alpha);
